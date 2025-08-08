@@ -2,42 +2,16 @@
 class Animal:
     def __init__(self, name):
         self.name = name
-    
     def make_sound(self):
         print(f"{self.name} издает звук")
-    
     def eat(self):
         print(f"{self.name} ест")
-
 # Производный класс
 class Dog(Animal):
     def __init__(self, name, breed):
         super().__init__(name)
         self.breed = breed
-    
     def make_sound(self):
         print(f"{self.name} (порода {self.breed}) лает: Гав-гав!")
-    
     def fetch(self):
         print(f"{self.name} приносит палку")
-
-# Тестовая программа
-def test_classes():
-    animal = Animal("Неизвестное животное")
-    print("\nТестирование базового класса:")
-    animal.make_sound()
-    animal.eat()
-    
-    dog = Dog("Бобик", "Лабрадор")
-    print("\nТестирование производного класса:")
-    dog.make_sound()
-    dog.eat()
-    dog.fetch()
-
-    print("\nПроверка наследования:")
-    print(f"Является ли Dog подклассом Animal? {issubclass(Dog, Animal)}")
-    print(f"Является ли dog экземпляром Animal? {isinstance(dog, Animal)}")
-    
-# Запуск тестов
-if __name__ == "__main__":
-    test_classes()
