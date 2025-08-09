@@ -1,0 +1,33 @@
+CREATE DATABASE TravelOrders;
+GO
+
+USE TravelOrders;
+GO
+
+-- Клиенты
+CREATE TABLE Clients (
+    ClientID INT PRIMARY KEY IDENTITY(1,1),
+    FirstName NVARCHAR(50) NOT NULL,
+    LastName NVARCHAR(50) NOT NULL,
+    Email NVARCHAR(100) UNIQUE,
+    Phone NVARCHAR(20) NOT NULL
+);
+
+-- Услуги
+CREATE TABLE Services (
+    ServiceID INT PRIMARY KEY IDENTITY(1,1),
+    Name NVARCHAR(100) NOT NULL,
+    Description NVARCHAR(500),
+    Price DECIMAL(10,2) NOT NULL
+);
+
+-- Заказы
+CREATE TABLE Orders (
+    OrderID INT PRIMARY KEY IDENTITY(1,1),
+    ClientID INT NOT NULL,
+    ServiceID INT NOT NULL,
+    OrderDate DATETIME DEFAULT GETDATE(),
+    Status NVARCHAR(20) DEFAULT 'Новый',
+    FOREIGN KEY (ClientID) REFERENCES Clients(ClientID),
+    FOREIGN KEY (ServiceID) REFERENCES Services(ServiceID)
+);
