@@ -1,109 +1,99 @@
 import mysql.connector
 from mysql.connector import Error
 
-def create_tourism_database():
-    try:
-        # Подключаемся к серверу MySQL
-        connection = mysql.connector.connect(
-            host='localhost',
-            user='your_username',
-            password='your_password'
-        )
-        
-        cursor = connection.cursor()
-        
-        # Создаем базу данных
-        cursor.execute("CREATE DATABASE IF NOT EXISTS tourism")
-        cursor.execute("USE tourism")
-        
-        # 1. Таблица клиентов (справочник)
-        cursor.execute("""
-        CREATE TABLE IF NOT EXISTS clients (
-            client_id INT AUTO_INCREMENT PRIMARY KEY,
-            first_name VARCHAR(50) NOT NULL,
-            last_name VARCHAR(50) NOT NULL,
-            passport_number VARCHAR(20) UNIQUE NOT NULL,
-            phone VARCHAR(20) NOT NULL,
-            email VARCHAR(100),
-            registration_date DATE NOT NULL
-        )
-        """)
-        
-        # 2. Таблица туров (справочник)
-        cursor.execute("""
-        CREATE TABLE IF NOT EXISTS tours (
-            tour_id INT AUTO_INCREMENT PRIMARY KEY,
-            title VARCHAR(100) NOT NULL,
-            country VARCHAR(50) NOT NULL,
-            city VARCHAR(50) NOT NULL,
-            description TEXT,
-            duration_days INT NOT NULL,
-            price DECIMAL(10, 2) NOT NULL,
-            is_active BOOLEAN DEFAULT TRUE
-        )
-        """)
-        
-        # 3. Таблица услуг (справочник)
-        cursor.execute("""
-        CREATE TABLE IF NOT EXISTS services (
-            service_id INT AUTO_INCREMENT PRIMARY KEY,
-            name VARCHAR(100) NOT NULL,
-            description TEXT,
-            price DECIMAL(10, 2) NOT NULL
-        )
-        """)
-        
-        # 4. Таблица сотрудников (справочник)
-        cursor.execute("""
-        CREATE TABLE IF NOT EXISTS employees (
-            employee_id INT AUTO_INCREMENT PRIMARY KEY,
-            first_name VARCHAR(50) NOT NULL,
-            last_name VARCHAR(50) NOT NULL,
-            position VARCHAR(50) NOT NULL,
-            hire_date DATE NOT NULL,
-            phone VARCHAR(20) NOT NULL
-        )
-        """)
-        
-        # 5. Таблица заказов (переменная информация)
-        cursor.execute("""
-        CREATE TABLE IF NOT EXISTS orders (
-            order_id INT AUTO_INCREMENT PRIMARY KEY,
-            client_id INT NOT NULL,
-            tour_id INT NOT NULL,
-            employee_id INT NOT NULL,
-            order_date DATE NOT NULL,
-            departure_date DATE NOT NULL,
-            return_date DATE NOT NULL,
-            total_price DECIMAL(12, 2) NOT NULL,
-            status ENUM('new', 'confirmed', 'paid', 'cancelled') DEFAULT 'new',
-            FOREIGN KEY (client_id) REFERENCES clients(client_id),
-            FOREIGN KEY (tour_id) REFERENCES tours(tour_id),
-            FOREIGN KEY (employee_id) REFERENCES employees(employee_id)
-        )
-        """)
-        
-        # Таблица связи заказов и услуг (многие ко многим)
-        cursor.execute("""
-        CREATE TABLE IF NOT EXISTS order_services (
-            order_id INT NOT NULL,
-            service_id INT NOT NULL,
-            quantity INT DEFAULT 1,
-            PRIMARY KEY (order_id, service_id),
-            FOREIGN KEY (order_id) REFERENCES orders(order_id),
-            FOREIGN KEY (service_id) REFERENCES services(service_id)
-        )
-        """)
-        
-        print("База данных 'tourism' успешно создана")
-        
-    except Error as e:
-        print(f"Ошибка при работе с MySQL: {e}")
-    finally:
-        if connection.is_connected():
-            cursor.close()
-            connection.close()
+class TourismDB:
+    def __init__(self, host, user, password, database):
+        self.connection = None
+        try:
+            self.connection = mysql.connector.connect(
+                host=host,
+                user=user,
+                password=password,
+                database=database
+            )
+            print("Подключение к MySQL успешно установлено")
+        except Error as e:
+            print(f"Ошибка подключения к MySQL: {e}")
+
+    def execute_query(self, query, params=None):
+        cursor = self.connection.cursor()
+        try:
+            cursor.execute(query, params or ())
+            self.connection.commit()
+            print("Запрос выполнен успешно")
+            return cursor
+        except Error as e:
+            print(f"Ошибка выполнения запроса: {e}")
+            return None
+
+    def fetch_data(self, query, params=None):
+        cursor = self.execute_query(query, params)
+        if cursor:
+            return cursor.fetchall()
+        return None
+
+    def close(self):
+        if self.connection:
+            self.connection.close()
             print("Соединение с MySQL закрыто")
 
-# Вызываем функцию для создания базы данных
-create_tourism_database()
+# Пример использования
+def main():
+    db = TourismDB(host='localhost', user='root', password='password', database='tourism')
+    
+    # Добавление тестовых данных
+    try:
+        # Добавляем страну
+        db.execute_query(
+            "INSERT INTO Countries (country_name, visa_required, climate) VALUES (%s, %s, %s)",
+            ('Италия', True, 'умеренный')
+        )
+        
+        # Добавляем отель
+        db.execute_query(
+            "INSERT INTO Hotels (hotel_name, country_id, city, star_rating, address) "
+            "VALUES (%s, %s, %s, %s, %s)",
+            ('Grand Hotel', 1, 'Рим', 5, 'Via Veneto, 123')
+        )
+        
+        # Добавляем клиента
+        db.execute_query(
+            "INSERT INTO Clients (last_name, first_name, passport_number, phone, registration_date) "
+            "VALUES (%s, %s, %s, %s, %s)",
+            ('Иванов', 'Иван', '1234567890', '+79991234567', '2023-01-15')
+        )
+        
+        # Добавляем услугу
+        db.execute_query(
+            "INSERT INTO Services (service_name, description, price, duration_days) "
+            "VALUES (%s, %s, %s, %s)",
+            ('Экскурсионный тур по Италии', 'Посещение Рима, Венеции и Флоренции', 120000.00, 10)
+        )
+        
+        # Создаем заказ
+        db.execute_query(
+            "INSERT INTO Orders (client_id, service_id, hotel_id, order_date, start_date, end_date, total_price) "
+            "VALUES (%s, %s, %s, %s, %s, %s, %s)",
+            (1, 1, 1, '2023-02-01', '2023-06-15', '2023-06-25', 150000.00)
+        )
+        
+        # Получаем информацию о заказах
+        orders = db.fetch_data(
+            "SELECT o.order_id, c.last_name, s.service_name, h.hotel_name, o.start_date, o.end_date, o.total_price "
+            "FROM Orders o "
+            "JOIN Clients c ON o.client_id = c.client_id "
+            "JOIN Services s ON o.service_id = s.service_id "
+            "LEFT JOIN Hotels h ON o.hotel_id = h.hotel_id"
+        )
+        
+        print("\nСписок заказов:")
+        for order in orders:
+            print(order)
+            
+    except Error as e:
+        print(f"Ошибка при работе с базой данных: {e}")
+    finally:
+        db.close()
+
+if __name__ == "__main__":
+    main()
